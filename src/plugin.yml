@@ -1,0 +1,10 @@
+name: WorldRestore
+version: 0.1
+main: nl.rodey.WorldRestore.WorldRestore
+commands:
+   worldrestore:
+      description: Stop the world.
+      usage: /worldrestore
+   worldreload:
+      description: Reload the world.
+      usage: /worldreload
