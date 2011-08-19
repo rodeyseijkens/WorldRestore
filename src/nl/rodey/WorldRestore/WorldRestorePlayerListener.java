@@ -2,6 +2,7 @@ package nl.rodey.WorldRestore;
 
 import java.util.logging.Logger;
 
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerListener;
@@ -32,16 +33,40 @@ public class WorldRestorePlayerListener extends PlayerListener {
     	String playerFromWorld = player.getWorld().getName();
     	String playerToWorld = null;
 
-		plugin.checkWorldList(player, playerFromWorld, playerToWorld);
+    	if(plugin.checkWorldList(player, playerFromWorld, playerToWorld))
+    	{        	
+        	if(plugin.TeleportQuit)
+    		{ 
+    			Location TeleportLoc = new Location(plugin.getServer().getWorld(plugin.TeleportQuitLoc_World), plugin.TeleportQuitLoc_X, plugin.TeleportQuitLoc_Y, plugin.TeleportQuitLoc_Z);
+    		
+    			player.teleport(TeleportLoc);
+    		}
+		}
 	}
 	
 	public void onPlayerTeleport(PlayerTeleportEvent event)
 	{		
     	Player player = event.getPlayer();
-    	String playerFromWorld = event.getFrom().getWorld().getName();
+    	final String playerFromWorld = event.getFrom().getWorld().getName();
     	String playerToWorld = event.getTo().getWorld().getName();
     	
-    	plugin.checkWorldList(player, playerFromWorld, playerToWorld);
+    	if(plugin.checkWorldList(player, playerFromWorld, playerToWorld))
+    	{
+        	int TickConvertedTime = plugin.WorldRestoreDelay * 20;
+        	
+        	// Set minimum for random disconnects/reconnects
+        	if(plugin.WorldRestoreDelay <= 10)
+        	{
+        		TickConvertedTime = 10;
+        	}        	
+    		
+        	plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() 
+        	{
+    		    public void run() {
+    		    	plugin.checkWorldPlayerList(playerFromWorld);
+    		    }
+    		}, TickConvertedTime);
+    	}
 	}
 	
 	

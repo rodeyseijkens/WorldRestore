@@ -2,21 +2,24 @@ package nl.rodey.WorldRestore;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.logging.Logger;
 
 import com.nijikokun.bukkit.Permissions.Permissions;
 import com.nijiko.permissions.PermissionHandler;
 
+import de.diddiz.LogBlock.LogBlock;
+import de.diddiz.LogBlock.QueryParams;
+
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.config.Configuration;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.World.Environment;
-import org.bukkit.command.ConsoleCommandSender;
 
 public class WorldRestore extends JavaPlugin
 {
@@ -31,16 +34,18 @@ public class WorldRestore extends JavaPlugin
 	public int TeleportQuitLoc_Y;
 	public int TeleportQuitLoc_Z;
 	public int WorldRestoreDelay = 10;
+	Calendar cal = new GregorianCalendar();
+	public int pluginStartTime;
 
 	private final WorldRestorePlayerListener playerListener = new WorldRestorePlayerListener(this);
 	
 	public void onEnable()
-	{ 
-		// Turn off level saving
-		getServer().dispatchCommand(new ConsoleCommandSender(getServer()), "save-off");
-		
+	{		
 		// Load Console Message
 		log.info("["+getDescription().getName()+"] version "+getDescription().getVersion()+" is loading...");
+		
+		pluginStartTime = (int) System.currentTimeMillis();
+		log.info("[" + getDescription().getName() + "] Plugin start time: " + pluginStartTime);
 		
 		// Load Config
 		loadConfig();
@@ -111,8 +116,9 @@ public class WorldRestore extends JavaPlugin
             }
 
             config.save();
-        }        
+        }  
         
+        return;
     }
 
 	public boolean checkpermissions(Player player, String string, Boolean standard)
@@ -134,58 +140,30 @@ public class WorldRestore extends JavaPlugin
             e.printStackTrace();
     }
     
-    public void checkWorldList(Player player, String playerFromWorld, String playerToWorld)
-	{
-    	int TickConvertedTime = WorldRestoreDelay * 20;
-    	
-    	// Set minimum for random disconnects/reconnects
-    	if(WorldRestoreDelay <= 10)
-    	{
-    		TickConvertedTime = 10;
-    	}
-    	
+    public boolean checkWorldList(Player player, String playerFromWorld, String playerToWorld)
+    {
     	String data = WordRestoreList;
 		if(data != null)
 		{
 			
-			//Check if the world is an PersonalChest world
+			//Check if the world is in the config
 	        String[] worlds = data.split(",");
 	        
 	        for (final String world : worlds)
 	        {	 
-	        	if(!playerToWorld.equalsIgnoreCase(world))
+	        	if( (playerFromWorld.equalsIgnoreCase(world)) &&  (!playerToWorld.equalsIgnoreCase(world)))
 	        	{
-		        	if(debug)
+	        		if(debug)
 	    			{ 
-	    				log.info("["+getDescription().getName()+"] World Check  From: "+ world +" To:"+ playerToWorld + "Not the same");
+	    				log.info("["+getDescription().getName()+"] "+ player.getName() +" was teleporting from: " + playerFromWorld + " to: " + playerToWorld);
 	    			}
 		    		
-	        	   	if(playerFromWorld.equalsIgnoreCase(world))
-		        	{
-			        	if(debug)
-		    			{ 
-		    				log.info("["+getDescription().getName()+"] World Check  Listed: "+ world +" From:"+ playerToWorld + "The the same");
-		    			}
-			    		
-			    		if(TeleportQuit)
-			    		{ 
-			    			Location TeleportLoc = new Location(getServer().getWorld(TeleportQuitLoc_World), TeleportQuitLoc_X, TeleportQuitLoc_Y, TeleportQuitLoc_Z);
-			    		
-			    			player.teleport(TeleportLoc);
-			    		}
-	        	
-			    		getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-	
-			    		    public void run() {
-			    		    	checkWorldPlayerList(world);
-			    		    }
-			    		}, TickConvertedTime);
-			    		
-			    		return;			    		
-		        	}        		
+		    		return true;
 	        	}
 	        }
 		}
+		
+		return false;
 	}
     
     public void checkWorldPlayerList(String world)
@@ -197,10 +175,7 @@ public class WorldRestore extends JavaPlugin
     	 
 		if(worldPlayerList.size() == 0)
 		{			
-			if(WorldRestoreUnload(world))
-			{
-				WorldRestoreReload(world);
-			}
+			WorldRestoreRestore(world);
 		}
 		else
 		{
@@ -211,66 +186,34 @@ public class WorldRestore extends JavaPlugin
 		}
 	}
     
-    public boolean WorldRestoreUnload(String world)
+    public boolean WorldRestoreRestore(String world)
     {
+    	
     	if(debug)
 		{
-			log.info("["+getDescription().getName()+"] "+ world +": Player Check: Empty");
+			log.info("[" + getDescription().getName() + "] Plugin start time: " + pluginStartTime);
+			log.info("[" + getDescription().getName() + "] Current Time: " + (int) System.currentTimeMillis());
 		}
-		
-		// Unload Chunks
-		int countChunkList = 0;
-		int countChunkUnloaded = 0;
-		
-		Chunk[] ChunkList = getServer().getWorld(world).getLoadedChunks();
-        
-        for (final Chunk chunkBlock : ChunkList)
-        { 
-        	countChunkList++;
-        	if(getServer().getWorld(world).unloadChunk(chunkBlock.getX(), chunkBlock.getZ(), false, false))
-        	{
-        		countChunkUnloaded++;
-        	}
-        	
-        }
-		
-        // Report Chunks Unloaded
-		if(debug)
-		{
-			log.info("[" + getDescription().getName() + "] " + countChunkUnloaded +" Chunks Unloaded of Total: " + countChunkList +"  "+ world);
-		}
-		
-		// Unload the world
-		if(getServer().unloadWorld(world, false))
-		{
-			if(debug)
+    	
+    	CommandSender cSender = new ConsoleCommandSender(getServer());
+    	
+    	LogBlock logblock = (LogBlock)getServer().getPluginManager().getPlugin("LogBlock");
+    	QueryParams params = new QueryParams(logblock);
+    	params.world = getServer().getWorld(world);
+    	params.minutes = (((int) System.currentTimeMillis() - pluginStartTime) / 60000);
+    	params.silent = true;
+    	try {
+    		logblock.getCommandsHandler().new CommandRollback(cSender, params, true);
+    	    
+    	    if(debug)
 			{
-				log.info("[" + getDescription().getName() + "] "+ world +" deactivated.");
+				log.info("[" + getDescription().getName() + "] "+ world +" restored");
 			}
-			
+    	    
 			return true;
-		}
-		else
-		{
-			if(debug)
-			{
-				log.info("[" + getDescription().getName() + "] "+ world +" not deactivated, some one still in there?");
-			}
-			
+		} catch (Exception e) {
+			e.printStackTrace();
 			return false;
 		}		
-    }
-    
-    public boolean WorldRestoreReload(String world)
-    {
-		getServer().createWorld(world,Environment.SKYLANDS);
-
-		if(debug)
-		{
-			log.info("[" + getDescription().getName() + "] "+ world +" activated");
-		}
-		return true;
-    }
-    
-    
+    }    
 }
