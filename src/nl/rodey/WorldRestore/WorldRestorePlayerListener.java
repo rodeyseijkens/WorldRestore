@@ -2,7 +2,6 @@ package nl.rodey.WorldRestore;
 
 import java.util.logging.Logger;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerListener;
@@ -28,19 +27,31 @@ public class WorldRestorePlayerListener extends PlayerListener {
     }
 	
 	public void onPlayerQuit(PlayerQuitEvent event)
-	{		
-    	Player player = event.getPlayer();
-    	String playerFromWorld = player.getWorld().getName();
-    	String playerToWorld = null;
-
-    	if(plugin.checkWorldList(player, playerFromWorld, playerToWorld))
-    	{        	
-        	if(plugin.TeleportQuit)
-    		{ 
-    			Location TeleportLoc = new Location(plugin.getServer().getWorld(plugin.TeleportQuitLoc_World), plugin.TeleportQuitLoc_X, plugin.TeleportQuitLoc_Y, plugin.TeleportQuitLoc_Z);
-    		
-    			player.teleport(TeleportLoc);
-    		}
+	{	
+		if(plugin.teleportOnQuit)
+		{
+			Player player = event.getPlayer();
+			String playerFromWorld = player.getWorld().getName();
+			
+			String data = plugin.WordRestoreList;
+			if(data != null)
+			{
+				//Check if the world is in the config
+		        String[] worlds = data.split(",");
+		        
+		        for (final String world : worlds)
+		        {	 
+		        	if( playerFromWorld.equalsIgnoreCase(world))
+		        	{
+		    			if(plugin.debug)
+		    			{ 
+		    				log.info("[" + plugin.getDescription().getName() + "] Trying Player Teleport");
+		    			}
+		    			
+		        		player.teleport(plugin.getPlayerTeleportLoc(player));
+		        	}
+		        }
+			}
 		}
 	}
 	
@@ -66,6 +77,27 @@ public class WorldRestorePlayerListener extends PlayerListener {
     		    	plugin.checkWorldPlayerList(playerFromWorld);
     		    }
     		}, TickConvertedTime);
+    	}
+    	else
+    	{
+    		if(plugin.teleportOnQuit)
+    		{
+				String data = plugin.WordRestoreList;
+				if(data != null)
+				{
+					
+					//Check if the world is in the config
+			        String[] worlds = data.split(",");
+			        
+			        for (final String world : worlds)
+			        {	 
+			        	if( (playerToWorld.equalsIgnoreCase(world)) &&  (!playerFromWorld.equalsIgnoreCase(world)))
+			        	{
+			        		plugin.setPlayerTeleportLoc(player, event.getFrom());
+			        	}
+			        }
+				}
+    		}
     	}
 	}
 	

@@ -1,6 +1,10 @@
 package nl.rodey.WorldRestore;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -19,6 +23,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.config.Configuration;
+import org.bukkit.Location;
 import org.bukkit.World;
 
 public class WorldRestore extends JavaPlugin
@@ -28,14 +33,11 @@ public class WorldRestore extends JavaPlugin
 	public Boolean usingpermissions = false;
 	public boolean debug = false;
 	public String WordRestoreList = null;
-	public boolean TeleportQuit = false;
-	public String TeleportQuitLoc_World = null;
-	public int TeleportQuitLoc_X;
-	public int TeleportQuitLoc_Y;
-	public int TeleportQuitLoc_Z;
 	public int WorldRestoreDelay = 10;
 	Calendar cal = new GregorianCalendar();
 	public int pluginStartTime;
+	public boolean teleportOnQuit = true;
+	public Location playerTeleportLocation = null;
 
 	private final WorldRestorePlayerListener playerListener = new WorldRestorePlayerListener(this);
 	
@@ -88,12 +90,8 @@ public class WorldRestore extends JavaPlugin
         Configuration config = new Configuration(configFile);
 
         config.load();
-        TeleportQuit = config.getBoolean("teleportquit", false);
-        TeleportQuitLoc_World = config.getString("teleportquitloc_world", null);
-        TeleportQuitLoc_X = config.getInt("teleportquitloc_X", 0);
-        TeleportQuitLoc_Y = config.getInt("teleportquitloc_Y", 0);
-        TeleportQuitLoc_Z = config.getInt("teleportquitloc_Z", 0);
         debug = config.getBoolean("debug", false);
+        teleportOnQuit = config.getBoolean("teleportOnQuit", true);
         WordRestoreList = config.getString("worlds", null);
         WorldRestoreDelay = config.getInt("worldRestoreDelay", 10);
         
@@ -126,7 +124,6 @@ public class WorldRestore extends JavaPlugin
 		return ((player.isOp() == true) || (usingpermissions ? Permissions.has(player,string) : standard));
 	}	
 	
-
 	// Error Reporting
     public void reportError(Exception e, String message)
     {
@@ -215,5 +212,68 @@ public class WorldRestore extends JavaPlugin
 			e.printStackTrace();
 			return false;
 		}		
-    }    
+    }
+    
+	public void setPlayerTeleportLoc(Player player, Location fromLocation) 
+	{		
+		File locDataFolder = new File(getDataFolder().getAbsolutePath(), "playerLocations");
+		locDataFolder.mkdirs();
+		
+		try {
+			File playerLocFile = new File(locDataFolder , player.getName() + ".loc");
+			playerLocFile.createNewFile();
+	
+			final BufferedWriter out = new BufferedWriter(new FileWriter(playerLocFile));
+
+        	out.write(fromLocation.getWorld().getName()+"#"+fromLocation.getX()+"#"+fromLocation.getY()+"#"+fromLocation.getZ());
+        	
+			out.close();
+
+			if(debug)
+			{ 
+				log.info("[" + getDescription().getName() + "] Player Teleport Location File Created");
+			}
+	
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public Location getPlayerTeleportLoc(Player player) 
+	{		
+		File locDataFolder = new File(getDataFolder().getAbsolutePath(), "playerLocations");
+
+		File playerLocFile = new File(locDataFolder , player.getName() + ".loc");
+		
+		if(debug)
+		{ 
+			log.info("[" + getDescription().getName() + "] Loading Player Teleport File");
+		}
+		
+		try {
+			
+			final BufferedReader in = new BufferedReader(new FileReader(playerLocFile));
+
+			String line;
+			line = in.readLine();
+			
+			final String[] parts = line.split("#");
+			in.close();		
+			
+			World world = getServer().getWorld(parts[0]);
+
+			if(debug)
+			{ 
+				log.info("[" + getDescription().getName() + "] Player Teleport Location: " + world.getName() + " | " + parts[1] + " | " + parts[2] + " | "+ parts[3] + " | ");
+			}
+			
+			playerTeleportLocation = new Location(world, Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3]));		
+			
+			return playerTeleportLocation;
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 }
