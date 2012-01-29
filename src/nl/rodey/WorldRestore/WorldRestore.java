@@ -6,23 +6,22 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.nijikokun.bukkit.Permissions.Permissions;
 import com.nijiko.permissions.PermissionHandler;
 
-import de.diddiz.LogBlock.LogBlock;
-import de.diddiz.LogBlock.QueryParams;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.util.config.Configuration;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -35,9 +34,11 @@ public class WorldRestore extends JavaPlugin
 	public String WordRestoreList = null;
 	public int WorldRestoreDelay = 10;
 	Calendar cal = new GregorianCalendar();
-	public int pluginStartTime;
+	public String pluginStartTime;
 	public boolean teleportOnQuit = true;
 	public Location playerTeleportLocation = null;
+
+	private FileConfiguration config;
 
 	private final WorldRestorePlayerListener playerListener = new WorldRestorePlayerListener(this);
 	
@@ -46,7 +47,11 @@ public class WorldRestore extends JavaPlugin
 		// Load Console Message
 		log.info("["+getDescription().getName()+"] version "+getDescription().getVersion()+" is loading...");
 		
-		pluginStartTime = (int) System.currentTimeMillis();
+		Date dNow = new Date();
+	    SimpleDateFormat ft = new SimpleDateFormat ("dd.MM.yyyy hh:mm:ss");
+		
+		pluginStartTime = ft.format(dNow);
+		
 		log.info("[" + getDescription().getName() + "] Plugin start time: " + pluginStartTime);
 		
 		// Load Config
@@ -79,42 +84,47 @@ public class WorldRestore extends JavaPlugin
 	
 	public void loadConfig()
     {
-        // Ensure config directory exists
-        File configDir = this.getDataFolder();
-        if (!configDir.exists())
-            configDir.mkdir();
 
-        // Check for existance of config file
-        File configFile = new File(this.getDataFolder().toString()
-                + "/config.yml");
-        Configuration config = new Configuration(configFile);
+		// Ensure config directory exists
+		File configDir = this.getDataFolder();
+		if (!configDir.exists())
+			configDir.mkdir();
 
-        config.load();
-        debug = config.getBoolean("debug", false);
-        teleportOnQuit = config.getBoolean("teleportOnQuit", true);
-        WordRestoreList = config.getString("worlds", null);
-        WorldRestoreDelay = config.getInt("worldRestoreDelay", 10);
+		// Check for existance of config file
+		File configFile = new File(this.getDataFolder().toString() + "/config.yml");
+		config = YamlConfiguration.loadConfiguration(configFile);
+		
+		// Adding Variables
+		if(!config.contains("Debug"))
+		{
+			config.addDefault("Debug", false);
+	
+	        config.addDefault("teleportOnQuit", true);
+	       
+	        config.addDefault("Worlds", "ExampleWorld1, ExampleWorld2");
+	        
+	        config.addDefault("RestoreDelay", 10);     
+		}
+
+
+        // Loading the variables from config
+    	debug = (Boolean) config.get("Debug");
+    	teleportOnQuit = (Boolean) config.get("teleportOnQuit");
+    	WordRestoreList = (String) config.get("Worlds");
+    	WorldRestoreDelay = (Integer) config.get("RestoreDelay");
         
         if(WordRestoreList != null)
         {
         	log.info("[" + getDescription().getName() + "] Worlds loaded: " + WordRestoreList);
         }
 
-        // Create default configuration if required
-        if (!configFile.exists())
-        {
-            try
-            {
-                configFile.createNewFile();
-                log.info("[" + getDescription().getName() + "] Config Created!");
-            } 
-            catch (IOException e)
-            {
-                reportError(e, "IOError while creating config file");
-            }
 
-            config.save();
-        }  
+        config.options().copyDefaults(true);
+        try {
+            config.save(configFile);
+        } catch (IOException ex) {
+            Logger.getLogger(JavaPlugin.class.getName()).log(Level.SEVERE, "Could not save config to " + configFile, ex);
+        }
         
         return;
     }
@@ -192,16 +202,16 @@ public class WorldRestore extends JavaPlugin
 			log.info("[" + getDescription().getName() + "] Current Time: " + (int) System.currentTimeMillis());
 		}
     	
-    	CommandSender cSender = new ConsoleCommandSender(getServer());
-    	
-    	LogBlock logblock = (LogBlock)getServer().getPluginManager().getPlugin("LogBlock");
-    	QueryParams params = new QueryParams(logblock);
-    	params.world = getServer().getWorld(world);
-    	params.minutes = (((int) System.currentTimeMillis() - pluginStartTime) / 60000);
-    	params.silent = true;
+    	//LogBlock logblock = (LogBlock)getServer().getPluginManager().getPlugin("LogBlock");
+    	//QueryParams params = new QueryParams(logblock);
+    	//params.world = getServer().getWorld(world);
+    	//params.since = pluginStartTime;
+    	//params.silent = true;
     	try {
-    		logblock.getCommandsHandler().new CommandRollback(cSender, params, true);
+    		//logblock.getCommandsHandler().new CommandRollback(getServer().getConsoleSender(), params, true);
     	    
+    		this.getServer().dispatchCommand(this.getServer().getConsoleSender(), "lb rollback world "+ world +" since "+ pluginStartTime);
+    		
     	    if(debug)
 			{
 				log.info("[" + getDescription().getName() + "] "+ world +" restored");

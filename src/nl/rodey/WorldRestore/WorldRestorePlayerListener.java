@@ -3,13 +3,13 @@ package nl.rodey.WorldRestore;
 import java.util.logging.Logger;
 
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
-import org.bukkit.event.player.PlayerListener;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.PluginManager;
 
-public class WorldRestorePlayerListener extends PlayerListener {
+public class WorldRestorePlayerListener implements Listener {
 	public static final Logger log = Logger.getLogger("Minecraft");
 	
 	private PluginManager pm;
@@ -22,10 +22,10 @@ public class WorldRestorePlayerListener extends PlayerListener {
 	public void registerEvents()
     {
         pm = plugin.getServer().getPluginManager();
-        pm.registerEvent(Event.Type.PLAYER_TELEPORT, this, Event.Priority.High, plugin);
-        pm.registerEvent(Event.Type.PLAYER_QUIT, this, Event.Priority.High, plugin);
+        pm.registerEvents(this, plugin);
     }
 	
+	@EventHandler
 	public void onPlayerQuit(PlayerQuitEvent event)
 	{	
 		if(plugin.teleportOnQuit)
@@ -55,6 +55,7 @@ public class WorldRestorePlayerListener extends PlayerListener {
 		}
 	}
 	
+	@EventHandler
 	public void onPlayerTeleport(PlayerTeleportEvent event)
 	{		
     	Player player = event.getPlayer();
@@ -71,12 +72,12 @@ public class WorldRestorePlayerListener extends PlayerListener {
         		TickConvertedTime = 10;
         	}        	
     		
-        	plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() 
-        	{
-    		    public void run() {
+        	plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+
+        	    public void run() {
     		    	plugin.checkWorldPlayerList(playerFromWorld);
-    		    }
-    		}, TickConvertedTime);
+        	    }
+        	}, TickConvertedTime);
     	}
     	else
     	{
